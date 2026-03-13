@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XcuseMe – Your Meeting Escape Artist</title>
+    <meta name="description"
+        content="XcuseMe helps you escape never-ending meetings with one-tap audio excuses. Set your meeting timer, pick a grace period, and let the chaos begin." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+    <!-- Background blobs -->
+    <div class="bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- ===== SCREEN 1: SETUP ===== -->
+    <div id="screen-setup" class="screen active">
+        <div class="setup-card">
+            <div class="brand">
+                <span class="brand-icon">🏃</span>
+                <h1 class="brand-name">XcuseMe</h1>
+                <p class="brand-tagline">Your personal meeting escape artist</p>
+            </div>
+
+            <div class="form-section">
+                <label class="form-label">How long is your meeting?</label>
+                <div class="duration-grid" id="meeting-duration-grid">
+                    <button class="dur-btn" data-value="15">15 min</button>
+                    <button class="dur-btn" data-value="30">30 min</button>
+                    <button class="dur-btn active" data-value="45">45 min</button>
+                    <button class="dur-btn" data-value="60">1 hr</button>
+                    <button class="dur-btn" data-value="90">1.5 hr</button>
+                    <button class="dur-btn custom-dur-btn" data-value="custom">✏️ Custom</button>
+                </div>
+                <div class="custom-input-wrap hidden" id="custom-dur-wrap">
+                    <input type="number" id="custom-dur-input" class="custom-input" min="1" max="480"
+                        placeholder="Minutes" />
+                    <span class="custom-unit">min</span>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <label class="form-label">Trigger excuses after meeting runs over by…</label>
+                <div class="grace-grid" id="grace-period-grid">
+                    <button class="grace-btn" data-value="5">+5 min</button>
+                    <button class="grace-btn active" data-value="10">+10 min</button>
+                    <button class="grace-btn" data-value="15">+15 min</button>
+                    <button class="grace-btn" data-value="20">+20 min</button>
+                </div>
+            </div>
+
+            <button class="start-btn" id="start-btn">
+                <span class="start-btn-icon">▶</span>
+                Start Timer
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== SCREEN 2: TIMER ===== -->
+    <div id="screen-timer" class="screen">
+        <div class="timer-card">
+            <div class="timer-header">
+                <button class="back-btn" id="back-btn">← Back</button>
+                <div class="meeting-info" id="meeting-info-label">Meeting · 45 min</div>
+            </div>
+
+            <div class="timer-display">
+                <div class="timer-ring-wrap">
+                    <svg class="timer-ring" viewBox="0 0 220 220" id="timer-svg">
+                        <circle class="ring-bg" cx="110" cy="110" r="96" />
+                        <circle class="ring-progress" id="ring-progress" cx="110" cy="110" r="96"
+                            stroke-dasharray="603.19" stroke-dashoffset="0" />
+                        <circle class="ring-grace" id="ring-grace" cx="110" cy="110" r="96" stroke-dasharray="603.19"
+                            stroke-dashoffset="603.19" />
+                    </svg>
+                    <div class="timer-center">
+                        <div class="timer-time" id="timer-time">00:00</div>
+                        <div class="timer-phase" id="timer-phase">In Meeting</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="timer-meta">
+                <div class="meta-item">
+                    <span class="meta-icon">⏱</span>
+                    <span class="meta-label">Meeting ends</span>
+                    <span class="meta-value" id="meta-ends">–</span>
+                </div>
+                <div class="meta-divider"></div>
+                <div class="meta-item">
+                    <span class="meta-icon">🚨</span>
+                    <span class="meta-label">Excuses fire</span>
+                    <span class="meta-value" id="meta-excuses">–</span>
+                </div>
+            </div>
+
+            <!-- Emergency toast -->
+            <div class="emergency-toast hidden" id="emergency-toast">
+                <div class="toast-left">
+                    <span class="toast-pulse"></span>
+                    <div>
+                        <div class="toast-title">Meeting's running over! 😅</div>
+                        <div class="toast-sub">Need an excuse right now?</div>
+                    </div>
+                </div>
+                <button class="toast-cta" id="toast-cta-btn">🚀 Escape Now</button>
+            </div>
+
+            <button class="stop-btn" id="stop-btn">⏹ End Session</button>
+        </div>
+    </div>
+
+    <!-- ===== SCREEN 3: EXCUSES ===== -->
+    <div id="screen-excuses" class="screen">
+        <div class="excuses-header">
+            <div class="excuses-brand">
+                <span class="excuses-fire">🔥</span>
+                <h2 class="excuses-title">Pick Your Escape</h2>
+                <p class="excuses-sub">Tap to play, tap again to pause 😄</p>
+            </div>
+            <button class="new-meeting-btn" id="new-meeting-btn">+ New Meeting</button>
+        </div>
+
+        <div class="excuse-grid" id="excuse-grid">
+            <!-- Populated by JS -->
+        </div>
+
+        <div class="excuse-tip">
+            <span>💡</span>
+            <span>Pro tip: Look shocked when it plays. Act first, explain later.</span>
+        </div>
+    </div>
+
+    <!-- ===== FLOATING XCUSEME POPOUT (shown during timer) ===== -->
+    <div id="xcuseme-popout" class="xcuseme-popout hidden">
+        <!-- Drag handle / header -->
+        <div class="popout-header" id="popout-header">
+            <div class="popout-title-row">
+                <span class="popout-logo">🏃</span>
+                <span class="popout-title">XcuseMe</span>
+                <div class="popout-controls">
+                    <button class="popout-ctrl-btn" id="popout-toggle-sounds" title="Show/Hide sounds">🎵</button>
+                    <button class="popout-ctrl-btn" id="popout-collapse-btn" title="Collapse">−</button>
+                </div>
+            </div>
+            <!-- Collapsed mini-bar (shown when collapsed) -->
+            <div class="popout-collapsed-info hidden" id="popout-collapsed-info">
+                <span class="popout-timer-mini" id="popout-timer-mini">00:00</span>
+            </div>
+        </div>
+
+        <!-- Expanded body -->
+        <div class="popout-body" id="popout-body">
+            <!-- Timer mirror -->
+            <div class="popout-timer-row">
+                <div class="popout-time" id="popout-time">00:00</div>
+                <div class="popout-phase" id="popout-phase">In Meeting</div>
+            </div>
+
+            <!-- XcuseMe CTA -->
+            <button class="xcuseme-cta-btn" id="xcuseme-cta-btn">
+                <span>🚨</span>
+                <span>XcuseMe</span>
+            </button>
+
+            <!-- Sound panel (hidden by default, shown on XcuseMe click) -->
+            <div class="popout-sounds hidden" id="popout-sounds">
+                <div class="popout-sounds-grid" id="popout-sounds-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Currently playing bar (on excuse full screen) -->
+    <div class="now-playing hidden" id="now-playing">
+        <div class="np-info">
+            <span class="np-icon" id="np-icon">🔊</span>
+            <span class="np-name" id="np-name">Playing…</span>
+        </div>
+        <div class="np-wave">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <button class="np-stop" id="np-stop">■ Stop</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
