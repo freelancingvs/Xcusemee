@@ -483,13 +483,19 @@ function showScreen(id) {
     const popout = document.getElementById('xcuseme-popout');
     if (id === 'screen-timer') {
         buildPopoutSoundGrid();
+        buildTimerInlineSoundGrid();
         popout.classList.remove('hidden');
     } else {
         popout.classList.add('hidden');
-        // hide sounds panel too
+        // reset sounds panels
         state.soundsVisible = false;
+        state.timerSoundsVisible = false;
         document.getElementById('popout-sounds').classList.add('hidden');
         document.getElementById('xcuseme-cta-btn').classList.remove('active');
+        const tiIs = document.getElementById('timer-inline-sounds');
+        if (tiIs) tiIs.classList.add('hidden');
+        const tiCta = document.getElementById('timer-xcuseme-cta');
+        if (tiCta) tiCta.classList.remove('active');
     }
 }
 
@@ -583,6 +589,49 @@ document.getElementById('np-stop').addEventListener('click', () => {
 });
 
 /* =====================================================
+   TIMER CARD INLINE XCUSEME CTA
+   ===================================================== */
+state.timerSoundsVisible = false;
+
+function buildTimerInlineSoundGrid() {
+    const grid = document.getElementById('timer-inline-sounds-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    EXCUSES.forEach(excuse => {
+        const card = document.createElement('div');
+        card.className = 'mini-sound-card';
+        card.dataset.excuseId = excuse.id;
+        card.style.setProperty('--card-gradient', excuse.gradient);
+        card.style.setProperty('--card-accent', excuse.accent);
+        card.style.setProperty('--card-shadow', excuse.shadow);
+        card.innerHTML = `
+          <span class="mini-emoji">${excuse.emoji}</span>
+          <span class="mini-name">${excuse.name}</span>
+          <div class="mini-wave"><span></span><span></span><span></span><span></span></div>
+          <button class="mini-pp-btn" title="Play/Pause">►</button>
+        `;
+        const ppBtn = card.querySelector('.mini-pp-btn');
+        ppBtn.addEventListener('click', e => { e.stopPropagation(); triggerExcuse(excuse); });
+        card.addEventListener('click', e => { if (e.target === ppBtn) return; triggerExcuse(excuse); });
+        grid.appendChild(card);
+    });
+}
+
+document.getElementById('timer-xcuseme-cta').addEventListener('click', () => {
+    state.timerSoundsVisible = !state.timerSoundsVisible;
+    const panel = document.getElementById('timer-inline-sounds');
+    const btn = document.getElementById('timer-xcuseme-cta');
+    const arrow = document.getElementById('timer-xcuseme-arrow');
+    if (state.timerSoundsVisible) {
+        panel.classList.remove('hidden');
+        btn.classList.add('active');
+    } else {
+        panel.classList.add('hidden');
+        btn.classList.remove('active');
+    }
+});
+
+/* =====================================================
    FLOATING POPOUT – XcuseMe CTA & Toggle
    ===================================================== */
 
@@ -613,7 +662,6 @@ document.getElementById('popout-collapse-btn').addEventListener('click', () => {
     const body = document.getElementById('popout-body');
     const colInfo = document.getElementById('popout-collapsed-info');
     const colBtn = document.getElementById('popout-collapse-btn');
-
     const isCollapsed = popout.classList.contains('collapsed');
     if (isCollapsed) {
         popout.classList.remove('collapsed');
@@ -629,6 +677,199 @@ document.getElementById('popout-collapse-btn').addEventListener('click', () => {
 });
 
 /* =====================================================
+   PICTURE-IN-PICTURE  (Document PiP API)
+   Keeps the widget visible when user switches tabs.
+   Falls back to title-bar blink on unsupported browsers.
+   ===================================================== */
+let _pipWindow = null;
+
+function buildPipHTML(timeText, phaseText) {
+    // Inject minimal self-contained HTML into the PiP window
+    return `
+        <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+                font-family: 'Outfit', system-ui, sans-serif;
+                background: #0e0e1e;
+                color: #f0f0ff;
+                padding: 14px;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                overflow: hidden;
+            }
+            .pip-header {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 0.8rem;
+                font-weight: 700;
+                color: rgba(167,139,250,0.9);
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+            }
+            .pip-time {
+                font-size: 2.2rem;
+                font-weight: 900;
+                color: #fff;
+                letter-spacing: -1.5px;
+                line-height: 1;
+            }
+            .pip-phase {
+                font-size: 0.7rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                color: #7c6dfa;
+                margin-top: 2px;
+            }
+            .pip-phase.grace { color: #f97316; }
+            .pip-sounds { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; flex: 1; margin-top: 4px; }
+            .pip-sounds::-webkit-scrollbar { width: 3px; }
+            .pip-btn {
+                display: flex; align-items: center; gap: 8px;
+                padding: 8px 10px;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 8px; cursor: pointer; transition: background 0.15s;
+                color: #f0f0ff; font-size: 0.82rem; font-weight: 600;
+                text-align: left; width: 100%; font-family: inherit;
+            }
+            .pip-btn:hover { background: rgba(255,255,255,0.1); }
+            .pip-btn.playing { background: rgba(124,109,250,0.18); border-color: rgba(124,109,250,0.4); }
+            .pip-btn .pp { margin-left: auto; font-size: 0.72rem; }
+        </style>
+        <div class="pip-header"><span>🏃</span> XcuseMe</div>
+        <div>
+            <div class="pip-time" id="pip-time">${timeText}</div>
+            <div class="pip-phase" id="pip-phase">${phaseText}</div>
+        </div>
+        <div class="pip-sounds" id="pip-sounds"></div>
+    `;
+}
+
+function syncPipTimer() {
+    if (!_pipWindow || _pipWindow.closed) return;
+    const timeEl = _pipWindow.document.getElementById('pip-time');
+    const phaseEl = _pipWindow.document.getElementById('pip-phase');
+    const mainTime = document.getElementById('timer-time');
+    const mainPhase = document.getElementById('timer-phase');
+    if (timeEl && mainTime) timeEl.textContent = mainTime.textContent;
+    if (phaseEl && mainPhase) {
+        phaseEl.textContent = mainPhase.textContent;
+        phaseEl.className = 'pip-phase' + (mainPhase.classList.contains('grace') ? ' grace' : '');
+    }
+}
+
+async function openDocumentPiP() {
+    const pipBtn = document.getElementById('popout-pip-btn');
+
+    // If already open, close it
+    if (_pipWindow && !_pipWindow.closed) {
+        _pipWindow.close();
+        _pipWindow = null;
+        pipBtn.classList.remove('pip-active');
+        pipBtn.title = 'Pop out (stays visible when switching tabs)';
+        return;
+    }
+
+    try {
+        // Document Picture-in-Picture API (Chrome 116+)
+        _pipWindow = await window.documentPictureInPicture.requestWindow({
+            width: 280,
+            height: 400,
+        });
+
+        const now = document.getElementById('timer-time').textContent;
+        const phase = document.getElementById('timer-phase').textContent;
+
+        // Copy Google Font link into PiP window
+        const link = document.createElement('link');
+        link.rel = 'preconnect';
+        link.href = 'https://fonts.googleapis.com';
+        _pipWindow.document.head.appendChild(link);
+
+        _pipWindow.document.body.innerHTML = buildPipHTML(now, phase);
+
+        // Build sound buttons inside PiP
+        const soundsDiv = _pipWindow.document.getElementById('pip-sounds');
+        EXCUSES.forEach(excuse => {
+            const btn = _pipWindow.document.createElement('button');
+            btn.className = 'pip-btn';
+            btn.dataset.id = excuse.id;
+            btn.innerHTML = `<span>${excuse.emoji}</span><span>${excuse.name}</span><span class="pp">►</span>`;
+            btn.addEventListener('click', () => triggerExcuse(excuse));
+            soundsDiv.appendChild(btn);
+        });
+
+        // Sync timer every second into PiP
+        const pipSyncInterval = setInterval(() => {
+            if (!_pipWindow || _pipWindow.closed) { clearInterval(pipSyncInterval); return; }
+            syncPipTimer();
+            // Update playing states
+            _pipWindow.document.querySelectorAll('.pip-btn').forEach(btn => {
+                const pp = btn.querySelector('.pp');
+                if (btn.dataset.id === state.currentExcuseId) {
+                    btn.classList.add('playing');
+                    if (pp) pp.textContent = '⏸';
+                } else {
+                    btn.classList.remove('playing');
+                    if (pp) pp.textContent = '►';
+                }
+            });
+        }, 500);
+
+        // PiP window closed
+        _pipWindow.addEventListener('pagehide', () => {
+            clearInterval(pipSyncInterval);
+            _pipWindow = null;
+            pipBtn.classList.remove('pip-active');
+        });
+
+        pipBtn.classList.add('pip-active');
+        pipBtn.title = 'Close pop-out window';
+
+    } catch (err) {
+        // Fallback for browsers that don't support Document PiP
+        console.warn('Document PiP not supported, using title-blink fallback', err);
+        startTitleBlink();
+        pipBtn.title = 'Blinking title tab as fallback';
+    }
+}
+
+// Fallback: blink the tab title so user can track meeting even on other tabs
+let _titleBlinkInterval = null;
+let _originalTitle = document.title;
+function startTitleBlink() {
+    if (_titleBlinkInterval) return;
+    _titleBlinkInterval = setInterval(() => {
+        const t = document.getElementById('timer-time');
+        if (!t) return;
+        const phase = state.phase === 'grace' ? '⏰ OVER' : '📋';
+        document.title = document.title === _originalTitle
+            ? `${phase} ${t.textContent} – XcuseMe`
+            : _originalTitle;
+    }, 1200);
+}
+function stopTitleBlink() {
+    clearInterval(_titleBlinkInterval);
+    _titleBlinkInterval = null;
+    document.title = _originalTitle;
+}
+
+document.getElementById('popout-pip-btn').addEventListener('click', openDocumentPiP);
+
+// Stop title blink when returning to setup
+const _origShowScreen = showScreen;
+function showScreenPatched(id) {
+    _origShowScreen(id);
+    if (id !== 'screen-timer') stopTitleBlink();
+}
+// Monkey-patch showScreen so all calls go through the patched version
+window.showScreen = showScreenPatched;
+
+/* =====================================================
    DRAGGABLE POPOUT
    ===================================================== */
 (function initDraggable() {
@@ -638,11 +879,8 @@ document.getElementById('popout-collapse-btn').addEventListener('click', () => {
     let isDragging = false;
     let startX, startY, initLeft, initTop;
 
-    function getPopoutRect() {
-        return popout.getBoundingClientRect();
-    }
+    function getPopoutRect() { return popout.getBoundingClientRect(); }
 
-    // Convert to fixed left/top positioning
     function ensureAbsolutePos() {
         if (!popout.style.left) {
             const rect = getPopoutRect();
@@ -654,66 +892,44 @@ document.getElementById('popout-collapse-btn').addEventListener('click', () => {
     }
 
     handle.addEventListener('mousedown', (e) => {
-        // Don't drag if clicking buttons inside header
         if (e.target.closest('button')) return;
         isDragging = true;
         ensureAbsolutePos();
-        startX = e.clientX;
-        startY = e.clientY;
+        startX = e.clientX; startY = e.clientY;
         initLeft = parseInt(popout.style.left) || 0;
         initTop = parseInt(popout.style.top) || 0;
         popout.classList.add('dragging');
         e.preventDefault();
     });
-
     document.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        const newLeft = initLeft + dx;
-        const newTop = initTop + dy;
-        // Clamp within viewport
         const rect = getPopoutRect();
-        const clampedLeft = Math.max(0, Math.min(newLeft, window.innerWidth - rect.width));
-        const clampedTop = Math.max(0, Math.min(newTop, window.innerHeight - rect.height));
-        popout.style.left = clampedLeft + 'px';
-        popout.style.top = clampedTop + 'px';
+        const l = Math.max(0, Math.min(initLeft + e.clientX - startX, window.innerWidth - rect.width));
+        const t = Math.max(0, Math.min(initTop + e.clientY - startY, window.innerHeight - rect.height));
+        popout.style.left = l + 'px';
+        popout.style.top = t + 'px';
     });
-
     document.addEventListener('mouseup', () => {
-        if (isDragging) {
-            isDragging = false;
-            popout.classList.remove('dragging');
-        }
+        isDragging = false; popout.classList.remove('dragging');
     });
-
-    // Touch support
     handle.addEventListener('touchstart', (e) => {
         if (e.target.closest('button')) return;
-        isDragging = true;
-        ensureAbsolutePos();
+        isDragging = true; ensureAbsolutePos();
         const t = e.touches[0];
         startX = t.clientX; startY = t.clientY;
         initLeft = parseInt(popout.style.left) || 0;
         initTop = parseInt(popout.style.top) || 0;
         popout.classList.add('dragging');
     }, { passive: true });
-
     document.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
         const t = e.touches[0];
-        const dx = t.clientX - startX;
-        const dy = t.clientY - startY;
         const rect = getPopoutRect();
-        const newLeft = Math.max(0, Math.min(initLeft + dx, window.innerWidth - rect.width));
-        const newTop = Math.max(0, Math.min(initTop + dy, window.innerHeight - rect.height));
-        popout.style.left = newLeft + 'px';
-        popout.style.top = newTop + 'px';
+        popout.style.left = Math.max(0, Math.min(initLeft + t.clientX - startX, window.innerWidth - rect.width)) + 'px';
+        popout.style.top = Math.max(0, Math.min(initTop + t.clientY - startY, window.innerHeight - rect.height)) + 'px';
     }, { passive: true });
-
     document.addEventListener('touchend', () => {
-        isDragging = false;
-        popout.classList.remove('dragging');
+        isDragging = false; popout.classList.remove('dragging');
     });
 })();
 

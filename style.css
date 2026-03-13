@@ -585,6 +585,106 @@ body {
   background: rgba(239, 68, 68, 0.08);
 }
 
+/* ---- Timer card inline XcuseMe CTA ---- */
+.timer-xcuseme-cta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.14), rgba(239, 68, 68, 0.09));
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  letter-spacing: 0.01em;
+  position: relative;
+}
+
+.timer-xcuseme-cta:hover {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(239, 68, 68, 0.16));
+  border-color: rgba(249, 115, 22, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.2);
+}
+
+.timer-xcuseme-cta.active {
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  border-color: transparent;
+  box-shadow: 0 4px 24px rgba(249, 115, 22, 0.38);
+}
+
+.timer-xcuseme-arrow {
+  font-size: 0.9rem;
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.timer-xcuseme-cta.active .timer-xcuseme-arrow {
+  transform: rotate(180deg);
+}
+
+/* Inline sound panel inside timer card */
+.timer-inline-sounds {
+  width: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(249, 115, 22, 0.3) transparent;
+  border-radius: var(--radius-sm);
+  animation: soundsReveal 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timer-inline-sounds:not(.hidden) {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes soundsReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.timer-inline-sounds::-webkit-scrollbar {
+  width: 3px;
+}
+
+.timer-inline-sounds::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.timer-inline-sounds::-webkit-scrollbar-thumb {
+  background: rgba(249, 115, 22, 0.3);
+  border-radius: 2px;
+}
+
+.timer-inline-sounds-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* PiP button active state */
+.popout-ctrl-btn.pip-active {
+  background: rgba(124, 109, 250, 0.3);
+  border-color: rgba(124, 109, 250, 0.6);
+  color: #fff;
+}
+
 /* ============================
    SCREEN 3 – EXCUSES
    ============================ */

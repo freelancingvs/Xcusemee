@@ -104,6 +104,20 @@
                 </div>
             </div>
 
+            <!-- XcuseMe CTA inline (in timer card) -->
+            <button class="timer-xcuseme-cta" id="timer-xcuseme-cta">
+                <span>🚨</span>
+                <span>XcuseMe</span>
+                <span class="timer-xcuseme-arrow" id="timer-xcuseme-arrow">▾</span>
+            </button>
+
+            <!-- Inline sound panel inside timer card -->
+            <div class="timer-inline-sounds hidden" id="timer-inline-sounds">
+                <div class="timer-inline-sounds-grid" id="timer-inline-sounds-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
             <!-- Emergency toast -->
             <div class="emergency-toast hidden" id="emergency-toast">
                 <div class="toast-left">
@@ -149,6 +163,8 @@
                 <span class="popout-logo">🏃</span>
                 <span class="popout-title">XcuseMe</span>
                 <div class="popout-controls">
+                    <button class="popout-ctrl-btn" id="popout-pip-btn"
+                        title="Pop out (stays visible when switching tabs)">📌</button>
                     <button class="popout-ctrl-btn" id="popout-toggle-sounds" title="Show/Hide sounds">🎵</button>
                     <button class="popout-ctrl-btn" id="popout-collapse-btn" title="Collapse">−</button>
                 </div>
